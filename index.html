@@ -6,7 +6,8 @@
 <style>
 :root{color-scheme:dark;font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif}*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#101820}canvas{display:block;width:100%;height:100%}
 #hud{position:fixed;inset:0;pointer-events:none;color:#f4f7fb}.brand{position:absolute;top:16px;left:16px;padding:12px 15px;background:#0b111bcc;border:1px solid #ffffff22;border-radius:10px}.brand b{color:#7ce7c5;font-size:12px;letter-spacing:.12em}.brand div{font-size:12px;color:#c5d0dc;margin-top:5px}
-#crosshair{position:absolute;top:50%;left:50%;width:12px;height:12px;transform:translate(-50%,-50%)}#crosshair:before,#crosshair:after{content:"";position:absolute;background:#fff;box-shadow:0 0 4px #000}#crosshair:before{width:2px;height:12px;left:5px}#crosshair:after{height:2px;width:12px;top:5px}
+#crosshair{position:absolute;top:50%;left:50%;width:18px;height:18px;transform:translate(-50%,-50%);filter:drop-shadow(0 1px 2px #000);transition:transform .08s}#crosshair:before,#crosshair:after{content:"";position:absolute;background:#fff;border-radius:2px}#crosshair:before{width:2px;height:18px;left:8px}#crosshair:after{height:2px;width:18px;top:8px}#crosshair.target{transform:translate(-50%,-50%) scale(1.25);filter:drop-shadow(0 0 4px #7ce7c5)}#crosshair.target:before,#crosshair.target:after{background:#7ce7c5}
+#inventory{position:fixed;right:18px;top:18px;width:min(270px,calc(100vw - 36px));padding:15px;border:1px solid #ffffff2b;border-radius:12px;background:#0b111bef;color:#f4f7fb;pointer-events:auto;display:none;backdrop-filter:blur(8px)}#inventory.visible{display:block}#inventory h2{font-size:12px;letter-spacing:.12em;color:#7ce7c5;margin:0 0 12px;text-transform:uppercase}#inventoryList{font-size:13px;color:#dce5ed;line-height:1.8}#inventoryHint{font-size:10px;color:#91a3b4;margin-top:8px}
 .controls{position:absolute;bottom:16px;left:50%;transform:translateX(-50%);background:#0b111bcc;border:1px solid #ffffff22;border-radius:9px;padding:9px 13px;font-size:12px;white-space:nowrap;color:#dce5ed}kbd{border:1px solid #ffffff35;border-radius:4px;padding:2px 5px;background:#ffffff12;font:inherit;font-weight:700}
 #overlay{position:fixed;inset:0;display:grid;place-items:center;padding:18px;background:#071018b8;backdrop-filter:blur(7px);color:#fff;overflow:auto}#overlay.hidden{display:none}
 .dashboard{width:min(900px,100%);max-height:100%;overflow:auto;background:#101c28f5;border:1px solid #ffffff2b;border-radius:16px;padding:22px;box-shadow:0 20px 70px #0007}.top{display:flex;justify-content:space-between;gap:16px;align-items:flex-start}.eyebrow{font-size:10px;letter-spacing:.17em;font-weight:800;color:#7ce7c5;text-transform:uppercase}h1{font-size:27px;margin:6px 0 5px;letter-spacing:-.04em}.sub{color:#aebdca;font-size:12px;line-height:1.5}.actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}button{border:0;border-radius:8px;padding:10px 13px;background:#7ce7c5;color:#092018;font-weight:800;cursor:pointer}button.secondary{background:#ffffff12;color:#edf4fa;border:1px solid #ffffff25}button:hover{filter:brightness(1.08)}
@@ -16,7 +17,7 @@
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js"}}</script>
 </head>
 <body>
-<div id="hud"><div class="brand"><b>TOWER DEFENSE SANDBOX</b><div id="status">Clique em Jogar para começar</div></div><div id="crosshair"></div><div class="controls"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> mover · <kbd>SHIFT</kbd> correr · <kbd>ESPAÇO</kbd> pular · Mouse olhar · <kbd>ESC</kbd> configurações</div></div>
+<div id="hud"><div class="brand"><b>TOWER DEFENSE SANDBOX</b><div id="status">Clique em Jogar para começar</div></div><div id="crosshair"></div><div id="inventory"><h2>Recursos coletados</h2><div id="inventoryList">Nenhum recurso coletado</div><div id="inventoryHint">Pressione E para fechar</div></div><div class="controls"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> mover · <kbd>SHIFT</kbd> correr · <kbd>ESPAÇO</kbd> pular · Mouse olhar · <kbd>ESC</kbd> configurações</div></div>
 <div id="overlay">
 <div class="dashboard">
 <div class="top"><div><div class="eyebrow">Protótipo FPS · Configurações</div><h1 id="panelTitle">Bem-vindo à arena</h1><div class="sub" id="panelDesc">Configure o mundo e gere recursos procedurais. As alterações são aplicadas imediatamente.</div></div><div class="actions"><button class="secondary" id="defaults">Restaurar padrão</button><button id="play">Jogar</button></div></div>
@@ -58,6 +59,8 @@
 import * as THREE from 'three';
 
 const defaults={renderDistance:140,fov:75,pixelRatio:1,shadows:false,sensitivity:0.0022,gravity:20,groundSize:240,fog:true,jumpSpeed:7.2,walkSpeed:5.5,runSpeed:9.2,playerHeight:1.7,rockCount:500,rockSeed:42021,rockSpread:100};
+const ROCK_HITS_TO_BREAK=4,HIT_INTERVAL=1,ROCK_SPAWN_SAFE_RADIUS=12,ROCK_COLLISION_RADIUS=1.0,PICKUP_RADIUS=1.6;
+const inventory={Pedra:0},rockData=[],drops=[],particles=[];const raycaster=new THREE.Raycaster();raycaster.far=4.2;const screenCenter=new THREE.Vector2(0,0);let hitTarget=null,hitTimer=0,mouseDown=false,inventoryVisible=false;const crosshair=document.getElementById('crosshair');
 const settings={...defaults};
 const scene=new THREE.Scene();scene.background=new THREE.Color(0x9ac6d5);
 const camera=new THREE.PerspectiveCamera(settings.fov,innerWidth/innerHeight,0.1,settings.renderDistance);camera.rotation.order='YXZ';camera.position.set(0,settings.playerHeight,6);
@@ -73,20 +76,31 @@ let rockInstances=null;
 let currentRockCount=0;
 function makeRandom(seed){let s=seed>>>0;return()=>{s=(s+0x6D2B79F5)>>>0;let t=s;t=Math.imul(t^(t>>>15),t|1);t^=t+Math.imul(t^(t>>>7),t|61);return((t^(t>>>14))>>>0)/4294967296;};}
 function generateRocks(){
- if(rockInstances){scene.remove(rockInstances);rockInstances.dispose?.();rockInstances=null;}
+ if(rockInstances){scene.remove(rockInstances);rockInstances=null;}rockData.length=0;
  const count=Math.max(0,Math.min(1500,Math.round(settings.rockCount)));
  if(!count){currentRockCount=0;document.getElementById('rocksValue').textContent='0';return;}
  const random=makeRandom(Number(settings.rockSeed)||1);rockInstances=new THREE.InstancedMesh(rockGeometry,rockMaterial,count);
  rockInstances.instanceMatrix.setUsage(THREE.StaticDrawUsage);
  const dummy=new THREE.Object3D(),color=new THREE.Color();const half=Math.min(settings.rockSpread,settings.groundSize/2-5);
  for(let i=0;i<count;i++){
-  let x,z;do{x=(random()*2-1)*half;z=(random()*2-1)*half;}while(x*x+z*z<36);
-  const scale=0.22+random()*0.85;
-  dummy.position.set(x,scale*0.65,z);dummy.rotation.set(random()*0.8,random()*Math.PI,random()*0.8);
-  dummy.scale.set(scale*(0.8+random()*0.6),scale*(0.55+random()*0.65),scale*(0.8+random()*0.6));dummy.updateMatrix();rockInstances.setMatrixAt(i,dummy.matrix);
+  let x,z;do{x=(random()*2-1)*half;z=(random()*2-1)*half;}while(x*x+z*z<ROCK_SPAWN_SAFE_RADIUS*ROCK_SPAWN_SAFE_RADIUS);
+  const scale=0.22+random()*0.85,rx=random()*0.8,ry=random()*Math.PI,rz=random()*0.8,sx=0.8+random()*0.6,sy=0.55+random()*0.65,sz=0.8+random()*0.6;rockData.push({x,z,scale,rx,ry,rz,sx,sy,sz,hits:0,alive:true});
+  dummy.position.set(x,scale*0.65,z);dummy.rotation.set(rx,ry,rz);
+  dummy.scale.set(scale*sx,scale*sy,scale*sz);dummy.updateMatrix();rockInstances.setMatrixAt(i,dummy.matrix);
   const shade=0.65+random()*0.5;color.setRGB(shade,shade,shade);rockInstances.setColorAt(i,color);
  }
  scene.add(rockInstances);currentRockCount=count;document.getElementById('rocksValue').textContent=String(count);
+}
+function updateRockInstance(index){const d=rockData[index],dummy=new THREE.Object3D();if(d.alive){dummy.position.set(d.x,d.scale*0.65,d.z);dummy.rotation.set(d.rx,d.ry,d.rz);dummy.scale.set(d.scale*d.sx,d.scale*d.sy,d.scale*d.sz);}else{dummy.position.set(0,-10000,0);dummy.scale.setScalar(0);}dummy.updateMatrix();rockInstances.setMatrixAt(index,dummy.matrix);rockInstances.instanceMatrix.needsUpdate=true;}
+function refreshInventory(){const list=document.getElementById('inventoryList');const entries=Object.entries(inventory).filter(([,n])=>n>0);list.innerHTML=entries.length?entries.map(([name,n])=>'<div>'+name+': <b>'+n+'</b></div>').join(''):'Nenhum recurso coletado';}
+function createDrop(x,z){const mesh=new THREE.Mesh(new THREE.IcosahedronGeometry(0.22,0),new THREE.MeshStandardMaterial({color:0xb7bdc1,roughness:1,flatShading:true}));mesh.position.set(x,0.24,z);scene.add(mesh);drops.push({mesh});}
+const particleGeometry=new THREE.BoxGeometry(.055,.055,.055),particleMaterial=new THREE.MeshBasicMaterial({color:0xc3c8cb});
+function spawnParticles(x,y,z){for(let i=0;i<6;i++){const mesh=new THREE.Mesh(particleGeometry,particleMaterial);mesh.position.set(x,y,z);scene.add(mesh);particles.push({mesh,vx:(Math.random()-.5)*3,vy:1+Math.random()*2.5,vz:(Math.random()-.5)*3,life:.35+Math.random()*.35});}}
+function performHit(){if(!hitTarget||!hitTarget.alive)return;const index=hitTarget.index,d=rockData[index];d.hits++;spawnParticles(d.x,d.scale*.8,d.z);if(d.hits>=ROCK_HITS_TO_BREAK){d.alive=false;updateRockInstance(index);createDrop(d.x,d.z);hitTarget=null;}}
+function updateInteractions(dt){raycaster.setFromCamera(screenCenter,camera);const hits=rockInstances?raycaster.intersectObject(rockInstances,false):[];let next=null;if(hits.length&&hits[0].instanceId!==undefined){const d=rockData[hits[0].instanceId];if(d&&d.alive)next={...d,index:hits[0].instanceId};}hitTarget=next;crosshair.classList.toggle('target',!!hitTarget);if(mouseDown&&hitTarget){hitTimer-=dt;if(hitTimer<=0){performHit();hitTimer=HIT_INTERVAL;}}else hitTimer=0;
+ for(let i=0;i<rockData.length;i++){const d=rockData[i];if(!d.alive)continue;const dx=camera.position.x-d.x,dz=camera.position.z-d.z,dist=Math.hypot(dx,dz),minDist=ROCK_COLLISION_RADIUS+d.scale*.7;if(dist<minDist&&dist>0.001){const push=minDist-dist;camera.position.x+=dx/dist*push;camera.position.z+=dz/dist*push;}}
+ for(let i=drops.length-1;i>=0;i--){const drop=drops[i],dx=camera.position.x-drop.mesh.position.x,dz=camera.position.z-drop.mesh.position.z,dist=Math.hypot(dx,dz);if(dist<PICKUP_RADIUS){const factor=Math.min(1,dt*12);drop.mesh.position.x+=dx*factor;drop.mesh.position.z+=dz*factor;drop.mesh.position.y+=(camera.position.y-.3-drop.mesh.position.y)*factor;if(dist<.65){inventory.Pedra++;refreshInventory();scene.remove(drop.mesh);drop.mesh.geometry.dispose();drop.mesh.material.dispose();drops.splice(i,1);continue;}}else drop.mesh.rotation.y+=dt*1.2;}
+ for(let i=particles.length-1;i>=0;i--){const p=particles[i];p.life-=dt;p.vy-=settings.gravity*.35*dt;p.mesh.position.x+=p.vx*dt;p.mesh.position.y+=p.vy*dt;p.mesh.position.z+=p.vz*dt;if(p.life<=0){scene.remove(p.mesh);particles.splice(i,1);}}
 }
 const overlay=document.getElementById('overlay'),status=document.getElementById('status');
 const keys=new Set();let yaw=0,pitch=0,verticalVelocity=0,grounded=true,lastTime=performance.now(),fpsFrames=0,fpsElapsed=0,reportedFps=0;
@@ -122,8 +136,9 @@ function lockMouse(){renderer.domElement.requestPointerLock();}
 document.getElementById('play').addEventListener('click',lockMouse);
 document.addEventListener('pointerlockchange',()=>{const active=document.pointerLockElement===renderer.domElement;if(active){overlay.classList.add('hidden');status.textContent='Em jogo · Esc abre configurações';}else{keys.clear();showPanel(true);}});
 document.addEventListener('mousemove',e=>{if(document.pointerLockElement!==renderer.domElement)return;yaw-=e.movementX*settings.sensitivity;pitch-=e.movementY*settings.sensitivity;pitch=THREE.MathUtils.clamp(pitch,-Math.PI/2+0.02,Math.PI/2-0.02);camera.rotation.set(pitch,yaw,0,'YXZ');});
-document.addEventListener('keydown',e=>{keys.add(e.code);if(['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code))e.preventDefault();});
-document.addEventListener('keyup',e=>keys.delete(e.code));window.addEventListener('blur',()=>keys.clear());
+document.addEventListener('keydown',e=>{keys.add(e.code);if(['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code))e.preventDefault();if(e.code==='KeyE'&&!e.repeat){inventoryVisible=!inventoryVisible;document.getElementById('inventory').classList.toggle('visible',inventoryVisible);}});
+document.addEventListener('keyup',e=>keys.delete(e.code));window.addEventListener('blur',()=>{keys.clear();mouseDown=false;});
+renderer.domElement.addEventListener('mousedown',e=>{if(e.button===0){mouseDown=true;hitTimer=0;}});window.addEventListener('mouseup',e=>{if(e.button===0)mouseDown=false;});renderer.domElement.addEventListener('contextmenu',e=>e.preventDefault());
 function update(dt){
  if(document.pointerLockElement!==renderer.domElement)return;
  const f=(keys.has('KeyW')||keys.has('ArrowUp')?1:0)-(keys.has('KeyS')||keys.has('ArrowDown')?1:0),s=(keys.has('KeyD')||keys.has('ArrowRight')?1:0)-(keys.has('KeyA')||keys.has('ArrowLeft')?1:0),len=Math.hypot(f,s);
@@ -131,11 +146,11 @@ function update(dt){
  if(keys.has('Space')&&grounded){verticalVelocity=settings.jumpSpeed;grounded=false;}
  verticalVelocity-=settings.gravity*dt;camera.position.y+=verticalVelocity*dt;
  if(camera.position.y<=settings.playerHeight){camera.position.y=settings.playerHeight;verticalVelocity=0;grounded=true;}
- const limit=settings.groundSize/2-2;camera.position.x=THREE.MathUtils.clamp(camera.position.x,-limit,limit);camera.position.z=THREE.MathUtils.clamp(camera.position.z,-limit,limit);
+ const limit=settings.groundSize/2-2;camera.position.x=THREE.MathUtils.clamp(camera.position.x,-limit,limit);camera.position.z=THREE.MathUtils.clamp(camera.position.z,-limit,limit);updateInteractions(dt);
 }
 function animate(now){requestAnimationFrame(animate);const dt=Math.min((now-lastTime)/1000,0.05);lastTime=now;update(dt);renderer.render(scene,camera);fpsFrames++;fpsElapsed+=dt;if(fpsElapsed>=0.5){reportedFps=Math.round(fpsFrames/fpsElapsed);fpsFrames=0;fpsElapsed=0;document.getElementById('fpsValue').textContent=reportedFps;document.getElementById('positionValue').textContent=camera.position.x.toFixed(0)+', '+camera.position.z.toFixed(0);document.getElementById('drawCallsValue').textContent=renderer.info.render.calls;}}
 function resize(){camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setPixelRatio(Math.min(devicePixelRatio*settings.pixelRatio,1.5));renderer.setSize(innerWidth,innerHeight);}
 addEventListener('resize',resize);
-scene.fog=new THREE.Fog(0x9ac6d5,settings.renderDistance*0.3,settings.renderDistance);generateRocks();requestAnimationFrame(animate);
+scene.fog=new THREE.Fog(0x9ac6d5,settings.renderDistance*0.3,settings.renderDistance);generateRocks();refreshInventory();requestAnimationFrame(animate);
 </script>
 </body></html>
