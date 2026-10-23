@@ -93,7 +93,7 @@ const keys=new Set();let yaw=0,pitch=0,verticalVelocity=0,grounded=true,lastTime
 const format={renderDistance:v=>v+' m',fov:v=>v+'°',pixelRatio:v=>Number(v).toFixed(1)+'×',sensitivity:v=>Number(v).toFixed(4),gravity:v=>v+' m/s²',groundSize:v=>v+' m',jumpSpeed:v=>v+' m/s',walkSpeed:v=>v+' m/s',runSpeed:v=>v+' m/s',playerHeight:v=>Number(v).toFixed(1)+' m',rockCount:v=>v,rockSpread:v=>v+' m'};
 function applySetting(key,value){
  const numeric=['renderDistance','fov','pixelRatio','sensitivity','gravity','groundSize','jumpSpeed','walkSpeed','runSpeed','playerHeight','rockCount','rockSeed','rockSpread'];
- settings[key]=numeric.includes(key)?Number(value):value==='true';
+ settings[key]=numeric.includes(key)?Number(value):(typeof value==='boolean'?value:value==='true');
  if(key==='renderDistance'){camera.far=settings.renderDistance;camera.updateProjectionMatrix();scene.fog.far=settings.fog?settings.renderDistance:100000;}
  if(key==='fov'){camera.fov=settings.fov;camera.updateProjectionMatrix();}
  if(key==='pixelRatio'){renderer.setPixelRatio(Math.min(devicePixelRatio*settings.pixelRatio,1.5));renderer.setSize(innerWidth,innerHeight);}
@@ -106,7 +106,11 @@ function applySetting(key,value){
 }
 document.querySelectorAll('[data-setting]').forEach(el=>{
  const key=el.dataset.setting;el.value=String(settings[key]);
- if(el.type==='range'||el.type==='number')el.addEventListener('input',()=>applySetting(key,el.value));
+ const resourceSetting=['rockCount','rockSeed','rockSpread'].includes(key);
+ if(resourceSetting&&el.type==='range'){
+  el.addEventListener('input',()=>{settings[key]=Number(el.value);const value=document.querySelector('[data-value="'+key+'"]');if(value)value.textContent=format[key]?format[key](settings[key]):String(settings[key]);});
+  el.addEventListener('change',()=>applySetting(key,el.value));
+ }else if(el.type==='range'||el.type==='number')el.addEventListener('input',()=>applySetting(key,el.value));
  else el.addEventListener('change',()=>applySetting(key,el.value));
  const value=document.querySelector('[data-value="'+key+'"]');if(value)value.textContent=format[key]?format[key](settings[key]):String(settings[key]);
 });
