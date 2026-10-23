@@ -1,214 +1,137 @@
 <!doctype html>
 <html lang="pt-BR">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Tower Defense Sandbox — Protótipo FPS</title>
-  <style>
-    :root { color-scheme: dark; font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
-    * { box-sizing: border-box; }
-    html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background: #101820; }
-    canvas { display: block; width: 100%; height: 100%; }
-    #hud { position: fixed; inset: 0; pointer-events: none; color: #f4f7fb; }
-    .panel { position: absolute; top: 18px; left: 18px; padding: 14px 16px; border: 1px solid #ffffff25; border-radius: 12px; background: #0b111bcc; backdrop-filter: blur(8px); box-shadow: 0 8px 32px #0003; }
-    .title { font-size: 13px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: #7ce7c5; }
-    #status { margin-top: 7px; font-size: 12px; color: #c5d0dc; }
-    .controls { position: absolute; left: 50%; bottom: 20px; transform: translateX(-50%); padding: 10px 14px; border-radius: 10px; background: #0b111bcc; border: 1px solid #ffffff20; font-size: 12px; color: #dce5ed; text-align: center; white-space: nowrap; }
-    kbd { display: inline-block; min-width: 22px; margin: 0 2px; padding: 3px 5px; border: 1px solid #ffffff38; border-radius: 5px; background: #ffffff12; color: white; font: inherit; font-weight: 700; }
-    #crosshair { position: absolute; top: 50%; left: 50%; width: 14px; height: 14px; transform: translate(-50%, -50%); opacity: .9; }
-    #crosshair::before, #crosshair::after { content: ""; position: absolute; background: #fff; border-radius: 2px; box-shadow: 0 0 5px #0008; }
-    #crosshair::before { left: 6px; top: 1px; width: 2px; height: 12px; }
-    #crosshair::after { left: 1px; top: 6px; width: 12px; height: 2px; }
-    #overlay { position: fixed; inset: 0; display: grid; place-items: center; background: linear-gradient(#0c1824a8, #071018b8); color: white; cursor: pointer; }
-    #overlay.hidden { display: none; }
-    .card { width: min(420px, calc(100vw - 36px)); padding: 30px; text-align: center; border: 1px solid #ffffff2b; border-radius: 18px; background: #101c28ed; box-shadow: 0 24px 90px #0006; }
-    .eyebrow { color: #7ce7c5; font-size: 11px; font-weight: 800; letter-spacing: .18em; text-transform: uppercase; }
-    h1 { margin: 10px 0; font-size: clamp(26px, 6vw, 38px); letter-spacing: -.04em; }
-    .card p { margin: 0 0 22px; color: #c5d0dc; line-height: 1.6; font-size: 14px; }
-    button { pointer-events: auto; border: 0; border-radius: 9px; padding: 12px 20px; background: #7ce7c5; color: #092018; font-weight: 800; font-size: 14px; cursor: pointer; }
-    button:hover { background: #a0f4da; }
-    .tip { margin-top: 16px; font-size: 11px; color: #91a3b4; }
-    @media (max-width: 520px) { .controls { white-space: normal; width: calc(100% - 24px); line-height: 2.1; } .panel { top: 12px; left: 12px; } }
-  </style>
-  <script type="importmap">
-    { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js" } }
-  </script>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Tower Defense Sandbox — FPS</title>
+<style>
+:root{color-scheme:dark;font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif}*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#101820}canvas{display:block;width:100%;height:100%}
+#hud{position:fixed;inset:0;pointer-events:none;color:#f4f7fb}.brand{position:absolute;top:16px;left:16px;padding:12px 15px;background:#0b111bcc;border:1px solid #ffffff22;border-radius:10px}.brand b{color:#7ce7c5;font-size:12px;letter-spacing:.12em}.brand div{font-size:12px;color:#c5d0dc;margin-top:5px}
+#crosshair{position:absolute;top:50%;left:50%;width:12px;height:12px;transform:translate(-50%,-50%)}#crosshair:before,#crosshair:after{content:"";position:absolute;background:#fff;box-shadow:0 0 4px #000}#crosshair:before{width:2px;height:12px;left:5px}#crosshair:after{height:2px;width:12px;top:5px}
+.controls{position:absolute;bottom:16px;left:50%;transform:translateX(-50%);background:#0b111bcc;border:1px solid #ffffff22;border-radius:9px;padding:9px 13px;font-size:12px;white-space:nowrap;color:#dce5ed}kbd{border:1px solid #ffffff35;border-radius:4px;padding:2px 5px;background:#ffffff12;font:inherit;font-weight:700}
+#overlay{position:fixed;inset:0;display:grid;place-items:center;padding:18px;background:#071018b8;backdrop-filter:blur(7px);color:#fff;overflow:auto}#overlay.hidden{display:none}
+.dashboard{width:min(900px,100%);max-height:100%;overflow:auto;background:#101c28f5;border:1px solid #ffffff2b;border-radius:16px;padding:22px;box-shadow:0 20px 70px #0007}.top{display:flex;justify-content:space-between;gap:16px;align-items:flex-start}.eyebrow{font-size:10px;letter-spacing:.17em;font-weight:800;color:#7ce7c5;text-transform:uppercase}h1{font-size:27px;margin:6px 0 5px;letter-spacing:-.04em}.sub{color:#aebdca;font-size:12px;line-height:1.5}.actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}button{border:0;border-radius:8px;padding:10px 13px;background:#7ce7c5;color:#092018;font-weight:800;cursor:pointer}button.secondary{background:#ffffff12;color:#edf4fa;border:1px solid #ffffff25}button:hover{filter:brightness(1.08)}
+.sections{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:18px}.section{border:1px solid #ffffff1b;border-radius:11px;padding:14px;min-width:0}.section h2{font-size:12px;text-transform:uppercase;letter-spacing:.12em;color:#7ce7c5;margin:0 0 12px}.setting{display:grid;grid-template-columns:minmax(0,1fr) minmax(105px,45%);gap:10px;align-items:center;margin:10px 0}.setting label{font-size:12px;color:#d9e3ec}.setting small{display:block;color:#8fa2b3;font-size:10px;margin-top:3px}.control{display:flex;align-items:center;gap:7px;min-width:0}.control input[type=range]{width:100%;min-width:35px;accent-color:#7ce7c5}.control input[type=number],.control select{width:100%;min-width:0;border:1px solid #ffffff2b;border-radius:6px;background:#09121b;color:white;padding:7px;font:inherit;font-size:12px}.value{min-width:44px;text-align:right;font-size:11px;color:#7ce7c5;font-variant-numeric:tabular-nums}.footer{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:14px;color:#8fa2b3;font-size:11px}.pill{border:1px solid #ffffff25;padding:5px 8px;border-radius:20px;color:#cbd8e3}
+@media(max-width:650px){.sections{grid-template-columns:1fr}.dashboard{padding:16px}.top{display:block}.actions{justify-content:flex-start;margin-top:12px}.setting{grid-template-columns:minmax(0,1fr) minmax(105px,42%)}.controls{white-space:normal;width:calc(100% - 24px);text-align:center;line-height:2}}
+</style>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js"}}</script>
 </head>
 <body>
-  <div id="hud">
-    <div class="panel">
-      <div class="title">Tower Defense Sandbox</div>
-      <div id="status">Pronto para jogar</div>
-    </div>
-    <div id="crosshair"></div>
-    <div class="controls"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> mover &nbsp; <kbd>SHIFT</kbd> correr &nbsp; <kbd>ESPAÇO</kbd> pular &nbsp; Mouse olhar</div>
-  </div>
-  <div id="overlay">
-    <div class="card">
-      <div class="eyebrow">Protótipo 01 · FPS</div>
-      <h1>Explore a arena.</h1>
-      <p>Um pequeno mundo 3D para começar. Caminhe, corra, pule e olhe ao redor em primeira pessoa.</p>
-      <button id="start">Jogar</button>
-      <div class="tip">Clique para capturar o mouse · Esc para liberar</div>
-    </div>
-  </div>
-  <script type="module">
-    import * as THREE from 'three';
+<div id="hud"><div class="brand"><b>TOWER DEFENSE SANDBOX</b><div id="status">Clique em Jogar para começar</div></div><div id="crosshair"></div><div class="controls"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> mover · <kbd>SHIFT</kbd> correr · <kbd>ESPAÇO</kbd> pular · Mouse olhar · <kbd>ESC</kbd> configurações</div></div>
+<div id="overlay">
+<div class="dashboard">
+<div class="top"><div><div class="eyebrow">Protótipo FPS · Configurações</div><h1 id="panelTitle">Bem-vindo à arena</h1><div class="sub" id="panelDesc">Configure o mundo e gere recursos procedurais. As alterações são aplicadas imediatamente.</div></div><div class="actions"><button class="secondary" id="defaults">Restaurar padrão</button><button id="play">Jogar</button></div></div>
+<div class="sections">
+<section class="section"><h2>Render</h2>
+<div class="setting"><label for="renderDistance">Distância de render<small>Distância máxima visível</small></label><div class="control"><input id="renderDistance" type="range" min="40" max="250" step="10" data-setting="renderDistance"><span class="value" data-value="renderDistance"></span></div></div>
+<div class="setting"><label for="fov">Campo de visão (FOV)</label><div class="control"><input id="fov" type="range" min="60" max="110" step="1" data-setting="fov"><span class="value" data-value="fov"></span></div></div>
+<div class="setting"><label for="pixelRatio">Qualidade de render<small>Escala da resolução (maior custa mais GPU)</small></label><div class="control"><input id="pixelRatio" type="range" min="0.6" max="1.5" step="0.1" data-setting="pixelRatio"><span class="value" data-value="pixelRatio"></span></div></div>
+<div class="setting"><label for="shadows">Sombras dinâmicas</label><div class="control"><select id="shadows" data-setting="shadows"><option value="true">Ligadas</option><option value="false">Desligadas</option></select></div></div>
+<div class="setting"><label for="sensitivity">Sensibilidade do mouse</label><div class="control"><input id="sensitivity" type="range" min="0.0005" max="0.005" step="0.0001" data-setting="sensitivity"><span class="value" data-value="sensitivity"></span></div></div>
+</section>
+<section class="section"><h2>Mundo</h2>
+<div class="setting"><label for="gravity">Gravidade<small>Força que puxa o jogador para baixo</small></label><div class="control"><input id="gravity" type="range" min="5" max="40" step="1" data-setting="gravity"><span class="value" data-value="gravity"></span></div></div>
+<div class="setting"><label for="groundSize">Tamanho do mundo</label><div class="control"><input id="groundSize" type="range" min="100" max="400" step="20" data-setting="groundSize"><span class="value" data-value="groundSize"></span></div></div>
+<div class="setting"><label for="fog">Névoa de distância</label><div class="control"><select id="fog" data-setting="fog"><option value="true">Ligada</option><option value="false">Desligada</option></select></div></div>
+<div class="setting"><label for="jumpSpeed">Força do pulo</label><div class="control"><input id="jumpSpeed" type="range" min="4" max="12" step="0.5" data-setting="jumpSpeed"><span class="value" data-value="jumpSpeed"></span></div></div>
+</section>
+<section class="section"><h2>Player</h2>
+<div class="setting"><label for="walkSpeed">Velocidade andando</label><div class="control"><input id="walkSpeed" type="range" min="1" max="12" step="0.5" data-setting="walkSpeed"><span class="value" data-value="walkSpeed"></span></div></div>
+<div class="setting"><label for="runSpeed">Velocidade correndo</label><div class="control"><input id="runSpeed" type="range" min="2" max="20" step="0.5" data-setting="runSpeed"><span class="value" data-value="runSpeed"></span></div></div>
+<div class="setting"><label for="playerHeight">Altura da câmera</label><div class="control"><input id="playerHeight" type="range" min="1.2" max="2.2" step="0.1" data-setting="playerHeight"><span class="value" data-value="playerHeight"></span></div></div>
+</section>
+<section class="section"><h2>Recursos · Pedras</h2>
+<div class="setting"><label for="rockCount">Quantidade de pedras<small>Instâncias 3D de baixo custo</small></label><div class="control"><input id="rockCount" type="range" min="0" max="1500" step="50" data-setting="rockCount"><span class="value" data-value="rockCount"></span></div></div>
+<div class="setting"><label for="rockSeed">Semente procedural<small>Mesmo número = mesmo mapa</small></label><div class="control"><input id="rockSeed" type="number" min="1" max="999999" data-setting="rockSeed"></div></div>
+<div class="setting"><label for="rockSpread">Área de distribuição</label><div class="control"><input id="rockSpread" type="range" min="20" max="180" step="10" data-setting="rockSpread"><span class="value" data-value="rockSpread"></span></div></div>
+<div class="actions" style="justify-content:flex-start;margin-top:14px"><button class="secondary" id="regenerate">Regenerar pedras</button></div>
+</section>
+<section class="section"><h2>Diagnóstico</h2>
+<div class="setting"><label>FPS aproximado</label><div class="value" id="fpsValue">—</div></div>
+<div class="setting"><label>Pedras na cena</label><div class="value" id="rocksValue">0</div></div>
+<div class="setting"><label>Posição do jogador</label><div class="value" id="positionValue">0, 0</div></div>
+<div class="setting"><label>Draw calls</label><div class="value" id="drawCallsValue">—</div></div>
+</section>
+</div>
+<div class="footer"><span>As configurações valem durante esta sessão.</span><span class="pill">InstancedMesh · low-poly</span></div>
+</div></div>
+<script type="module">
+import * as THREE from 'three';
 
-    const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x9ac6d5);
-    scene.fog = new THREE.Fog(0x9ac6d5, 35, 115);
-
-    const camera = new THREE.PerspectiveCamera(75, innerWidth / innerHeight, 0.1, 180);
-    camera.rotation.order = 'YXZ';
-    camera.position.set(0, 1.7, 6);
-
-    const renderer = new THREE.WebGLRenderer({ antialias: true });
-    renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
-    renderer.setSize(innerWidth, innerHeight);
-    renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-    renderer.outputColorSpace = THREE.SRGBColorSpace;
-    document.body.appendChild(renderer.domElement);
-
-    scene.add(new THREE.HemisphereLight(0xe5f6ff, 0x65715a, 2.0));
-    const sun = new THREE.DirectionalLight(0xfff0d7, 2.4);
-    sun.position.set(-18, 32, 12);
-    sun.castShadow = true;
-    sun.shadow.mapSize.set(2048, 2048);
-    sun.shadow.camera.left = -45;
-    sun.shadow.camera.right = 45;
-    sun.shadow.camera.top = 45;
-    sun.shadow.camera.bottom = -45;
-    scene.add(sun);
-
-    const ground = new THREE.Mesh(
-      new THREE.PlaneGeometry(240, 240),
-      new THREE.MeshStandardMaterial({ color: 0x657b61, roughness: 1 })
-    );
-    ground.rotation.x = -Math.PI / 2;
-    ground.receiveShadow = true;
-    scene.add(ground);
-
-    const grid = new THREE.GridHelper(200, 100, 0xd0e2c3, 0x91a68b);
-    grid.position.y = 0.012;
-    grid.material.transparent = true;
-    grid.material.opacity = 0.26;
-    scene.add(grid);
-
-    // Marcadores simples dão escala e ajudam a perceber o movimento.
-    const markerMat = new THREE.MeshStandardMaterial({ color: 0xd2b887, roughness: 0.9 });
-    const darkMat = new THREE.MeshStandardMaterial({ color: 0x435b54, roughness: 0.95 });
-    for (let x = -40; x <= 40; x += 10) {
-      for (let z = -40; z <= 40; z += 10) {
-        if (x === 0 && z === 0) continue;
-        const h = 0.45 + ((Math.abs(x * 7 + z * 3) % 5) * 0.18);
-        const geo = new THREE.BoxGeometry(0.7, h, 0.7);
-        const block = new THREE.Mesh(geo, (Math.abs(x + z) % 20 === 0) ? markerMat : darkMat);
-        block.position.set(x, h / 2, z);
-        block.castShadow = true;
-        block.receiveShadow = true;
-        scene.add(block);
-      }
-    }
-
-    // Uma plataforma central destaca o ponto inicial sem bloquear o jogador.
-    const pad = new THREE.Mesh(
-      new THREE.RingGeometry(1.8, 2.05, 48),
-      new THREE.MeshBasicMaterial({ color: 0x7ce7c5, side: THREE.DoubleSide })
-    );
-    pad.rotation.x = -Math.PI / 2;
-    pad.position.set(0, 0.025, 0);
-    scene.add(pad);
-
-    const overlay = document.getElementById('overlay');
-    const status = document.getElementById('status');
-    const keys = new Set();
-    let yaw = 0;
-    let pitch = 0;
-    let verticalVelocity = 0;
-    let grounded = true;
-    let lastTime = performance.now();
-
-    const WALK_SPEED = 5.5;
-    const RUN_SPEED = 9.2;
-    const JUMP_SPEED = 7.2;
-    const GRAVITY = 20;
-    const PLAYER_HEIGHT = 1.7;
-
-    function lockMouse() {
-      renderer.domElement.requestPointerLock();
-    }
-    document.getElementById('start').addEventListener('click', lockMouse);
-    overlay.addEventListener('click', (event) => {
-      if (event.target === overlay) lockMouse();
-    });
-    document.addEventListener('pointerlockchange', () => {
-      const active = document.pointerLockElement === renderer.domElement;
-      overlay.classList.toggle('hidden', active);
-      status.textContent = active ? 'Em jogo · mouse capturado' : 'Pausado · clique em Jogar';
-    });
-    document.addEventListener('mousemove', (event) => {
-      if (document.pointerLockElement !== renderer.domElement) return;
-      yaw -= event.movementX * 0.0022;
-      pitch -= event.movementY * 0.0022;
-      pitch = Math.max(-Math.PI / 2 + 0.02, Math.min(Math.PI / 2 - 0.02, pitch));
-      camera.rotation.set(pitch, yaw, 0, 'YXZ');
-    });
-    document.addEventListener('keydown', (event) => {
-      keys.add(event.code);
-      if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(event.code)) event.preventDefault();
-    });
-    document.addEventListener('keyup', (event) => keys.delete(event.code));
-    window.addEventListener('blur', () => keys.clear());
-
-    function update(dt) {
-      if (document.pointerLockElement !== renderer.domElement) return;
-
-      const forwardInput = (keys.has('KeyW') || keys.has('ArrowUp') ? 1 : 0) - (keys.has('KeyS') || keys.has('ArrowDown') ? 1 : 0);
-      const sideInput = (keys.has('KeyD') || keys.has('ArrowRight') ? 1 : 0) - (keys.has('KeyA') || keys.has('ArrowLeft') ? 1 : 0);
-      const inputLength = Math.hypot(forwardInput, sideInput);
-      if (inputLength > 0) {
-        const speed = (keys.has('ShiftLeft') || keys.has('ShiftRight')) ? RUN_SPEED : WALK_SPEED;
-        const forward = new THREE.Vector3(-Math.sin(yaw), 0, -Math.cos(yaw));
-        const right = new THREE.Vector3(Math.cos(yaw), 0, -Math.sin(yaw));
-        const scale = speed * dt / inputLength;
-        camera.position.addScaledVector(forward, forwardInput * scale);
-        camera.position.addScaledVector(right, sideInput * scale);
-      }
-
-      if (keys.has('Space') && grounded) {
-        verticalVelocity = JUMP_SPEED;
-        grounded = false;
-      }
-      verticalVelocity -= GRAVITY * dt;
-      camera.position.y += verticalVelocity * dt;
-      if (camera.position.y <= PLAYER_HEIGHT) {
-        camera.position.y = PLAYER_HEIGHT;
-        verticalVelocity = 0;
-        grounded = true;
-      }
-
-      // Limites amplos para manter o jogador dentro da arena.
-      camera.position.x = THREE.MathUtils.clamp(camera.position.x, -95, 95);
-      camera.position.z = THREE.MathUtils.clamp(camera.position.z, -95, 95);
-    }
-
-    function animate(now) {
-      requestAnimationFrame(animate);
-      const dt = Math.min((now - lastTime) / 1000, 0.05);
-      lastTime = now;
-      update(dt);
-      renderer.render(scene, camera);
-    }
-    requestAnimationFrame(animate);
-
-    addEventListener('resize', () => {
-      camera.aspect = innerWidth / innerHeight;
-      camera.updateProjectionMatrix();
-      renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
-      renderer.setSize(innerWidth, innerHeight);
-    });
-  </script>
-</body>
-</html>
+const defaults={renderDistance:140,fov:75,pixelRatio:1,shadows:false,sensitivity:0.0022,gravity:20,groundSize:240,fog:true,jumpSpeed:7.2,walkSpeed:5.5,runSpeed:9.2,playerHeight:1.7,rockCount:500,rockSeed:42021,rockSpread:100};
+const settings={...defaults};
+const scene=new THREE.Scene();scene.background=new THREE.Color(0x9ac6d5);
+const camera=new THREE.PerspectiveCamera(settings.fov,innerWidth/innerHeight,0.1,settings.renderDistance);camera.rotation.order='YXZ';camera.position.set(0,settings.playerHeight,6);
+const renderer=new THREE.WebGLRenderer({antialias:false,powerPreference:'high-performance'});renderer.setPixelRatio(Math.min(devicePixelRatio*settings.pixelRatio,1.5));renderer.setSize(innerWidth,innerHeight);renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.shadowMap.enabled=false;document.body.appendChild(renderer.domElement);
+scene.add(new THREE.HemisphereLight(0xe5f6ff,0x65715a,2));
+const sun=new THREE.DirectionalLight(0xfff0d7,2);sun.position.set(-18,32,12);scene.add(sun);
+const groundMaterial=new THREE.MeshStandardMaterial({color:0x657b61,roughness:1});
+let ground=new THREE.Mesh(new THREE.PlaneGeometry(settings.groundSize,settings.groundSize),groundMaterial);ground.rotation.x=-Math.PI/2;scene.add(ground);
+const pad=new THREE.Mesh(new THREE.RingGeometry(1.8,2.05,32),new THREE.MeshBasicMaterial({color:0x7ce7c5,side:THREE.DoubleSide}));pad.rotation.x=-Math.PI/2;pad.position.y=0.025;scene.add(pad);
+const rockGeometry=new THREE.IcosahedronGeometry(1,1);
+const rockMaterial=new THREE.MeshStandardMaterial({color:0x8a8d8e,roughness:1,flatShading:true});
+let rockInstances=null;
+let currentRockCount=0;
+function makeRandom(seed){let s=seed>>>0;return()=>{s=(s+0x6D2B79F5)>>>0;let t=s;t=Math.imul(t^(t>>>15),t|1);t^=t+Math.imul(t^(t>>>7),t|61);return((t^(t>>>14))>>>0)/4294967296;};}
+function generateRocks(){
+ if(rockInstances){scene.remove(rockInstances);rockInstances.dispose?.();rockInstances=null;}
+ const count=Math.max(0,Math.min(1500,Math.round(settings.rockCount)));
+ if(!count){currentRockCount=0;document.getElementById('rocksValue').textContent='0';return;}
+ const random=makeRandom(Number(settings.rockSeed)||1);rockInstances=new THREE.InstancedMesh(rockGeometry,rockMaterial,count);
+ rockInstances.instanceMatrix.setUsage(THREE.StaticDrawUsage);
+ const dummy=new THREE.Object3D(),color=new THREE.Color();const half=Math.min(settings.rockSpread,settings.groundSize/2-5);
+ for(let i=0;i<count;i++){
+  let x,z;do{x=(random()*2-1)*half;z=(random()*2-1)*half;}while(x*x+z*z<36);
+  const scale=0.22+random()*0.85;
+  dummy.position.set(x,scale*0.65,z);dummy.rotation.set(random()*0.8,random()*Math.PI,random()*0.8);
+  dummy.scale.set(scale*(0.8+random()*0.6),scale*(0.55+random()*0.65),scale*(0.8+random()*0.6));dummy.updateMatrix();rockInstances.setMatrixAt(i,dummy.matrix);
+  const shade=0.65+random()*0.5;color.setRGB(shade,shade,shade);rockInstances.setColorAt(i,color);
+ }
+ scene.add(rockInstances);currentRockCount=count;document.getElementById('rocksValue').textContent=String(count);
+}
+const overlay=document.getElementById('overlay'),status=document.getElementById('status');
+const keys=new Set();let yaw=0,pitch=0,verticalVelocity=0,grounded=true,lastTime=performance.now(),fpsFrames=0,fpsElapsed=0,reportedFps=0;
+const format={renderDistance:v=>v+' m',fov:v=>v+'°',pixelRatio:v=>Number(v).toFixed(1)+'×',sensitivity:v=>Number(v).toFixed(4),gravity:v=>v+' m/s²',groundSize:v=>v+' m',jumpSpeed:v=>v+' m/s',walkSpeed:v=>v+' m/s',runSpeed:v=>v+' m/s',playerHeight:v=>Number(v).toFixed(1)+' m',rockCount:v=>v,rockSpread:v=>v+' m'};
+function applySetting(key,value){
+ const numeric=['renderDistance','fov','pixelRatio','sensitivity','gravity','groundSize','jumpSpeed','walkSpeed','runSpeed','playerHeight','rockCount','rockSeed','rockSpread'];
+ settings[key]=numeric.includes(key)?Number(value):value==='true';
+ if(key==='renderDistance'){camera.far=settings.renderDistance;camera.updateProjectionMatrix();scene.fog.far=settings.fog?settings.renderDistance:100000;}
+ if(key==='fov'){camera.fov=settings.fov;camera.updateProjectionMatrix();}
+ if(key==='pixelRatio'){renderer.setPixelRatio(Math.min(devicePixelRatio*settings.pixelRatio,1.5));renderer.setSize(innerWidth,innerHeight);}
+ if(key==='shadows'){renderer.shadowMap.enabled=settings.shadows;sun.castShadow=settings.shadows;renderer.shadowMap.needsUpdate=true;}
+ if(key==='fog'){scene.fog=settings.fog?new THREE.Fog(0x9ac6d5,settings.renderDistance*0.3,settings.renderDistance):null;}
+ if(key==='groundSize'){scene.remove(ground);ground.geometry.dispose();ground=new THREE.Mesh(new THREE.PlaneGeometry(settings.groundSize,settings.groundSize),groundMaterial);ground.rotation.x=-Math.PI/2;scene.add(ground);}
+ if(key==='playerHeight'&&grounded)camera.position.y=settings.playerHeight;
+ if(['rockCount','rockSeed','rockSpread','groundSize'].includes(key))generateRocks();
+ const el=document.querySelector('[data-value="'+key+'"]');if(el)el.textContent=format[key]?format[key](settings[key]):String(settings[key]);
+}
+document.querySelectorAll('[data-setting]').forEach(el=>{
+ const key=el.dataset.setting;el.value=String(settings[key]);
+ if(el.type==='range'||el.type==='number')el.addEventListener('input',()=>applySetting(key,el.value));
+ else el.addEventListener('change',()=>applySetting(key,el.value));
+ const value=document.querySelector('[data-value="'+key+'"]');if(value)value.textContent=format[key]?format[key](settings[key]):String(settings[key]);
+});
+function syncAll(){for(const key of Object.keys(settings)){const el=document.querySelector('[data-setting="'+key+'"]');if(el){el.value=String(settings[key]);applySetting(key,settings[key]);}}}
+document.getElementById('defaults').addEventListener('click',()=>{Object.assign(settings,defaults);syncAll();});
+document.getElementById('regenerate').addEventListener('click',()=>{settings.rockSeed=Math.floor(Math.random()*999998)+1;document.getElementById('rockSeed').value=settings.rockSeed;applySetting('rockSeed',settings.rockSeed);});
+function showPanel(paused){overlay.classList.remove('hidden');document.getElementById('panelTitle').textContent=paused?'Jogo pausado':'Bem-vindo à arena';document.getElementById('panelDesc').textContent=paused?'Ajuste qualquer parâmetro e clique em Continuar para voltar ao jogo.':'Configure o mundo e gere recursos procedurais. As alterações são aplicadas imediatamente.';document.getElementById('play').textContent=paused?'Continuar':'Jogar';status.textContent=paused?'Pausado · configurações abertas':'Clique em Jogar para começar';}
+function lockMouse(){renderer.domElement.requestPointerLock();}
+document.getElementById('play').addEventListener('click',lockMouse);
+document.addEventListener('pointerlockchange',()=>{const active=document.pointerLockElement===renderer.domElement;if(active){overlay.classList.add('hidden');status.textContent='Em jogo · Esc abre configurações';}else{keys.clear();showPanel(true);}});
+document.addEventListener('mousemove',e=>{if(document.pointerLockElement!==renderer.domElement)return;yaw-=e.movementX*settings.sensitivity;pitch-=e.movementY*settings.sensitivity;pitch=THREE.MathUtils.clamp(pitch,-Math.PI/2+0.02,Math.PI/2-0.02);camera.rotation.set(pitch,yaw,0,'YXZ');});
+document.addEventListener('keydown',e=>{keys.add(e.code);if(['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code))e.preventDefault();});
+document.addEventListener('keyup',e=>keys.delete(e.code));window.addEventListener('blur',()=>keys.clear());
+function update(dt){
+ if(document.pointerLockElement!==renderer.domElement)return;
+ const f=(keys.has('KeyW')||keys.has('ArrowUp')?1:0)-(keys.has('KeyS')||keys.has('ArrowDown')?1:0),s=(keys.has('KeyD')||keys.has('ArrowRight')?1:0)-(keys.has('KeyA')||keys.has('ArrowLeft')?1:0),len=Math.hypot(f,s);
+ if(len){const speed=keys.has('ShiftLeft')||keys.has('ShiftRight')?settings.runSpeed:settings.walkSpeed;camera.position.x+=(-Math.sin(yaw)*f+Math.cos(yaw)*s)*speed*dt/len;camera.position.z+=(-Math.cos(yaw)*f-Math.sin(yaw)*s)*speed*dt/len;}
+ if(keys.has('Space')&&grounded){verticalVelocity=settings.jumpSpeed;grounded=false;}
+ verticalVelocity-=settings.gravity*dt;camera.position.y+=verticalVelocity*dt;
+ if(camera.position.y<=settings.playerHeight){camera.position.y=settings.playerHeight;verticalVelocity=0;grounded=true;}
+ const limit=settings.groundSize/2-2;camera.position.x=THREE.MathUtils.clamp(camera.position.x,-limit,limit);camera.position.z=THREE.MathUtils.clamp(camera.position.z,-limit,limit);
+}
+function animate(now){requestAnimationFrame(animate);const dt=Math.min((now-lastTime)/1000,0.05);lastTime=now;update(dt);renderer.render(scene,camera);fpsFrames++;fpsElapsed+=dt;if(fpsElapsed>=0.5){reportedFps=Math.round(fpsFrames/fpsElapsed);fpsFrames=0;fpsElapsed=0;document.getElementById('fpsValue').textContent=reportedFps;document.getElementById('positionValue').textContent=camera.position.x.toFixed(0)+', '+camera.position.z.toFixed(0);document.getElementById('drawCallsValue').textContent=renderer.info.render.calls;}}
+function resize(){camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setPixelRatio(Math.min(devicePixelRatio*settings.pixelRatio,1.5));renderer.setSize(innerWidth,innerHeight);}
+addEventListener('resize',resize);
+scene.fog=new THREE.Fog(0x9ac6d5,settings.renderDistance*0.3,settings.renderDistance);generateRocks();requestAnimationFrame(animate);
+</script>
+</body></html>
