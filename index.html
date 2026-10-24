@@ -80,6 +80,23 @@ const trunkGeometry=new THREE.CylinderGeometry(.22,.34,1,5,1,false);trunkGeometr
 const trunkMaterial=new THREE.MeshStandardMaterial({color:0x765037,roughness:1,flatShading:true});
 const canopyGeometry=new THREE.IcosahedronGeometry(1,0);
 const canopyMaterial=new THREE.MeshStandardMaterial({color:0x47764b,roughness:1,flatShading:true});
+let crystalFloat=null,crystalBaseY=0,crystalTime=0;
+function createCentralCrystal(){
+ const x=0,z=0,groundY=terrainTopAt(x,z),base=new THREE.Group();
+ const plinth=new THREE.Mesh(new THREE.CylinderGeometry(.9,1.12,.22,8),new THREE.MeshStandardMaterial({color:0x38334b,roughness:.8,flatShading:true}));
+ plinth.position.set(x,groundY+.11,z);base.add(plinth);
+ const ring=new THREE.Mesh(new THREE.TorusGeometry(.92,.055,6,12),new THREE.MeshStandardMaterial({color:0x9c67ff,emissive:0x5120a8,emissiveIntensity:.65,metalness:.25,roughness:.35}));
+ ring.rotation.x=Math.PI/2;ring.position.set(x,groundY+.24,z);base.add(ring);scene.add(base);
+ crystalFloat=new THREE.Group();crystalFloat.position.set(x,groundY+1.85,z);crystalBaseY=crystalFloat.position.y;
+ const crystalMat=new THREE.MeshStandardMaterial({color:0x8d36ed,emissive:0x40106f,emissiveIntensity:.5,metalness:.18,roughness:.22,flatShading:true});
+ const core=new THREE.Mesh(new THREE.OctahedronGeometry(.82,0),crystalMat);core.scale.set(.78,1.65,.78);crystalFloat.add(core);
+ const tipMat=new THREE.MeshStandardMaterial({color:0xc59aff,emissive:0x6729a8,emissiveIntensity:.4,metalness:.12,roughness:.25,flatShading:true});
+ const shardA=new THREE.Mesh(new THREE.ConeGeometry(.32,.9,5),tipMat);shardA.position.set(-.48,-.18,.1);shardA.rotation.z=.32;shardA.rotation.x=.2;crystalFloat.add(shardA);
+ const shardB=new THREE.Mesh(new THREE.ConeGeometry(.24,.68,5),crystalMat);shardB.position.set(.47,.12,-.12);shardB.rotation.z=-.4;shardB.rotation.x=-.2;crystalFloat.add(shardB);
+ const light=new THREE.PointLight(0x9b42ff,2.2,8,2);light.position.set(0,0,0);crystalFloat.add(light);
+ scene.add(crystalFloat);
+}
+function updateCentralCrystal(dt){if(!crystalFloat)return;crystalTime+=dt;crystalFloat.position.y=crystalBaseY+Math.sin(crystalTime*1.6)*.22;crystalFloat.rotation.y+=dt*.32;}
 let rockInstances=null,treeTrunks=null,treeCanopies=null;
 let currentRockCount=0,currentTreeCount=0;
 function terrainKey(x,z){return Math.round(x*1000)+','+Math.round(z*1000);}
@@ -159,7 +176,7 @@ renderer.domElement.addEventListener('mousedown',e=>{if(e.button===0){mouseDown=
 const dayNight={elapsed:0,daySeconds:1800,nightSeconds:1800};const nightAmbient=new THREE.HemisphereLight(0x7189b5,0x151a2b,0);scene.add(nightAmbient);const playerLamp=new THREE.PointLight(0xffd7a0,0,5.5,2);playerLamp.position.set(0,0,0);scene.add(playerLamp);const daySky=new THREE.Color(0x9ac6d5),nightSky=new THREE.Color(0x10182b),dayFog=new THREE.Color(0x9ac6d5),nightFog=new THREE.Color(0x171d31);const dayGround=new THREE.Color(0x657b61),nightGround=new THREE.Color(0x293746);const clockStatus=document.getElementById('clockStatus');
 function updateDayNight(dt){dayNight.elapsed=(dayNight.elapsed+dt)%(dayNight.daySeconds+dayNight.nightSeconds);const isDay=dayNight.elapsed<dayNight.daySeconds;const cycleT=dayNight.elapsed/(dayNight.daySeconds+dayNight.nightSeconds)*Math.PI*2;const light=THREE.MathUtils.clamp((1+Math.cos(cycleT))/2,0,1);sun.position.set(Math.cos(cycleT)*35,Math.sin(cycleT)*30,12);sun.position.y=Math.max(-8,sun.position.y);sun.intensity=.08+light*2.0;sun.color.set(isDay?0xfff0d7:0x879bd8);scene.background.copy(nightSky).lerp(daySky,light);groundMaterial.color.copy(nightGround).lerp(dayGround,light);if(scene.fog)scene.fog.color.copy(nightFog).lerp(dayFog,light);scene.children.forEach(obj=>{if(obj.isHemisphereLight&&obj!==nightAmbient)obj.intensity=.22+light*1.78;});nightAmbient.intensity=.2+(1-light)*.42;playerLamp.intensity=(1-light)*.48;playerLamp.position.set(camera.position.x,camera.position.y-.25,camera.position.z);const gameMinutes=(dayNight.elapsed/(dayNight.daySeconds+dayNight.nightSeconds))*1440;const hour=(6+Math.floor(gameMinutes/60))%24;const minute=Math.floor(gameMinutes%60);clockStatus.textContent=(isDay?'Dia':'Noite')+' · '+String(hour).padStart(2,'0')+':'+String(minute).padStart(2,'0');}
 function update(dt){
- updateDayNight(dt);
+ updateDayNight(dt);updateCentralCrystal(dt);
  if(document.pointerLockElement!==renderer.domElement)return;
  const f=(keys.has('KeyW')||keys.has('ArrowUp')?1:0)-(keys.has('KeyS')||keys.has('ArrowDown')?1:0),s=(keys.has('KeyD')||keys.has('ArrowRight')?1:0)-(keys.has('KeyA')||keys.has('ArrowLeft')?1:0),len=Math.hypot(f,s);
  if(len){const speed=keys.has('ShiftLeft')||keys.has('ShiftRight')?settings.runSpeed:settings.walkSpeed;const oldX=camera.position.x,oldZ=camera.position.z,nextX=oldX+(-Math.sin(yaw)*f+Math.cos(yaw)*s)*speed*dt/len,nextZ=oldZ+(-Math.cos(yaw)*f-Math.sin(yaw)*s)*speed*dt/len,oldTop=terrainTopAt(oldX,oldZ),nextTop=terrainTopAt(nextX,nextZ);if(godMode||nextTop-oldTop<=settings.playerHeight*.55){camera.position.x=nextX;camera.position.z=nextZ;}}
@@ -173,6 +190,6 @@ const handGeometry=new THREE.BoxGeometry(.16,.12,.34);const handMaterial=new THR
 function animate(now){requestAnimationFrame(animate);const dt=Math.min((now-lastTime)/1000,0.05);lastTime=now;update(dt);updateVisibility(dt);renderer.render(scene,camera);fpsFrames++;fpsElapsed+=dt;if(fpsElapsed>=0.5){reportedFps=Math.round(fpsFrames/fpsElapsed);fpsFrames=0;fpsElapsed=0;document.getElementById('fpsValue').textContent=reportedFps;document.getElementById('positionValue').textContent=camera.position.x.toFixed(0)+', '+camera.position.z.toFixed(0);document.getElementById('drawCallsValue').textContent=renderer.info.render.calls;}}
 function resize(){camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setPixelRatio(Math.min(devicePixelRatio*settings.pixelRatio,1.5));renderer.setSize(innerWidth,innerHeight);}
 addEventListener('resize',resize);
-scene.fog=new THREE.Fog(0x9ac6d5,settings.renderDistance*0.3,settings.renderDistance);buildTerrain();generateRocks();generateTrees();refreshInventory();requestAnimationFrame(animate);
+scene.fog=new THREE.Fog(0x9ac6d5,settings.renderDistance*0.3,settings.renderDistance);buildTerrain();createCentralCrystal();generateRocks();generateTrees();refreshInventory();requestAnimationFrame(animate);
 </script>
 </body></html>
