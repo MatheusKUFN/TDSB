@@ -135,6 +135,38 @@ function updateInteractions(dt){raycaster.setFromCamera(screenCenter,camera);con
  for(let i=drops.length-1;i>=0;i--){const drop=drops[i],dx=camera.position.x-drop.mesh.position.x,dz=camera.position.z-drop.mesh.position.z,dist=Math.hypot(dx,dz);if(dist<PICKUP_RADIUS){const factor=Math.min(1,dt*12);drop.mesh.position.x+=dx*factor;drop.mesh.position.z+=dz*factor;drop.mesh.position.y+=(camera.position.y-.3-drop.mesh.position.y)*factor;if(dist<.65){inventory[drop.type]++;refreshInventory();scene.remove(drop.mesh);drop.mesh.geometry.dispose();drop.mesh.material.dispose();drops.splice(i,1);continue;}}else drop.mesh.rotation.y+=dt*1.2;}
  for(let i=particles.length-1;i>=0;i--){const p=particles[i];p.life-=dt;p.vy-=settings.gravity*.35*dt;p.mesh.position.x+=p.vx*dt;p.mesh.position.y+=p.vy*dt;p.mesh.position.z+=p.vz*dt;if(p.life<=0){scene.remove(p.mesh);particles.splice(i,1);}}
 }
+
+const enemies=[];let enemySpawnTimer=10,enemySpawnCount=0;
+const enemyBodyGeo=new THREE.CapsuleGeometry(.34,.72,4,6),enemyHeadGeo=new THREE.SphereGeometry(.27,8,6),enemyLimbGeo=new THREE.CylinderGeometry(.105,.13,.62,6);
+const enemyBodyMat=new THREE.MeshStandardMaterial({color:0x53616b,roughness:1,flatShading:true});
+const enemyHeadMat=new THREE.MeshStandardMaterial({color:0x87939a,roughness:1,flatShading:true});
+const enemyLimbMat=new THREE.MeshStandardMaterial({color:0x39434b,roughness:1,flatShading:true});
+const enemyEyeMat=new THREE.MeshStandardMaterial({color:0xff392f,emissive:0xb5120b,emissiveIntensity:1.4});
+function createEnemy(){
+ const night=dayNight.elapsed>=dayNight.daySeconds,angle=Math.random()*Math.PI*2,distance=22+Math.random()*12;
+ const limit=settings.groundSize/2-3,x=THREE.MathUtils.clamp(camera.position.x+Math.cos(angle)*distance,-limit,limit),z=THREE.MathUtils.clamp(camera.position.z+Math.sin(angle)*distance,-limit,limit);
+ const root=new THREE.Group();root.position.set(x,terrainTopAt(x,z),z);
+ const body=new THREE.Mesh(enemyBodyGeo,enemyBodyMat),head=new THREE.Mesh(enemyHeadGeo,enemyHeadMat);body.position.y=1.02;head.position.y=1.78;root.add(body,head);
+ const eyes=new THREE.Group();for(const side of [-1,1]){const eye=new THREE.Mesh(new THREE.SphereGeometry(.045,6,6),enemyEyeMat);eye.position.set(side*.105,1.81,-.235);eyes.add(eye);}root.add(eyes);
+ const limbs=[];for(const side of [-1,1]){const arm=new THREE.Mesh(enemyLimbGeo,enemyLimbMat);arm.position.set(side*.43,1.05,0);arm.rotation.z=side*-.22;root.add(arm);limbs.push(arm);const leg=new THREE.Mesh(enemyLimbGeo,enemyLimbMat);leg.position.set(side*.17,.36,0);root.add(leg);limbs.push(leg);}
+ if(night){body.material=new THREE.MeshStandardMaterial({color:0x343b50,roughness:1,flatShading:true});}
+ scene.add(root);enemies.push({root,x,z,limbs,phase:Math.random()*Math.PI*2,speed:settings.walkSpeed*.72});
+}
+function updateEnemies(dt){
+ const night=dayNight.elapsed>=dayNight.daySeconds,cap=night?14:3;
+ enemySpawnTimer-=dt;
+ if(enemySpawnTimer<=0&&enemies.length<cap){createEnemy();enemySpawnTimer=(night?5.5+Math.random()*3.5:28+Math.random()*22);}
+ else if(enemies.length>=cap)enemySpawnTimer=Math.min(enemySpawnTimer,2);
+ for(let i=enemies.length-1;i>=0;i--){
+  const e=enemies[i],dx=camera.position.x-e.x,dz=camera.position.z-e.z,dist=Math.hypot(dx,dz);
+  e.phase+=dt*7;
+  if(dist>1.35){const step=Math.min(e.speed*dt,dist-1.35);e.x+=dx/dist*step;e.z+=dz/dist*step;e.root.position.x=e.x;e.root.position.z=e.z;e.root.rotation.y=Math.atan2(dx,dz);}
+  e.root.position.y=terrainTopAt(e.x,e.z)+Math.abs(Math.sin(e.phase))*.055;
+  e.limbs[0].rotation.x=Math.sin(e.phase)*.55;e.limbs[1].rotation.x=-Math.sin(e.phase)*.55;e.limbs[2].rotation.x=-Math.sin(e.phase)*.65;e.limbs[3].rotation.x=Math.sin(e.phase)*.65;
+  if(dist>settings.renderDistance*1.4){scene.remove(e.root);enemies.splice(i,1);}
+ }
+}
+
 const overlay=document.getElementById('overlay'),status=document.getElementById('status');
 const keys=new Set();let yaw=0,pitch=0,verticalVelocity=0,grounded=true,lastTime=performance.now(),fpsFrames=0,fpsElapsed=0,reportedFps=0;
 const format={renderDistance:v=>v+' m',fov:v=>v+'°',pixelRatio:v=>Number(v).toFixed(1)+'×',sensitivity:v=>Number(v).toFixed(4),gravity:v=>v+' m/s²',groundSize:v=>v+' m',jumpSpeed:v=>v+' m/s',walkSpeed:v=>v+' m/s',runSpeed:v=>v+' m/s',playerHeight:v=>Number(v).toFixed(1)+' m',rockCount:v=>v,rockSpread:v=>v+' m',treeCount:v=>v};
@@ -183,7 +215,7 @@ function update(dt){
  if(godMode){const vertical=(keys.has('Space')?1:0)-(keys.has('ControlLeft')||keys.has('ControlRight')?1:0);camera.position.y+=vertical*(keys.has('ShiftLeft')||keys.has('ShiftRight')?settings.runSpeed:settings.walkSpeed)*dt;verticalVelocity=0;grounded=false;}else{if(keys.has('Space')&&grounded){verticalVelocity=settings.jumpSpeed;grounded=false;}
  verticalVelocity-=settings.gravity*dt;camera.position.y+=verticalVelocity*dt;
  const floorY=terrainTopAt(camera.position.x,camera.position.z)+settings.playerHeight;if(verticalVelocity<=0&&camera.position.y<=floorY){camera.position.y=floorY;verticalVelocity=0;grounded=true;}}
- if(!godMode){const limit=settings.groundSize/2-2;camera.position.x=THREE.MathUtils.clamp(camera.position.x,-limit,limit);camera.position.z=THREE.MathUtils.clamp(camera.position.z,-limit,limit);}updateInteractions(dt);
+ if(!godMode){const limit=settings.groundSize/2-2;camera.position.x=THREE.MathUtils.clamp(camera.position.x,-limit,limit);camera.position.z=THREE.MathUtils.clamp(camera.position.z,-limit,limit);}updateInteractions(dt);updateEnemies(dt);
 }
 let cullElapsed=0;const _frustum=new THREE.Frustum(),_projScreen=new THREE.Matrix4();function updateVisibility(dt){cullElapsed+=dt;if(cullElapsed<.2)return;cullElapsed=0;camera.updateMatrixWorld();_projScreen.multiplyMatrices(camera.projectionMatrix,camera.matrixWorldInverse);_frustum.setFromProjectionMatrix(_projScreen);const o=new THREE.Object3D();for(const b of terrainBlockData){const visible=b.alive&&_frustum.intersectsSphere(new THREE.Sphere(new THREE.Vector3(b.x,b.y,b.z),BLOCK_SIZE*.9));if(visible!==b.visible){b.visible=visible;o.position.set(b.x,visible?b.y:-10000,b.z);o.scale.setScalar(visible?1:0);o.updateMatrix();terrainBlocks.setMatrixAt(b.index,o.matrix);}}terrainBlocks.instanceMatrix.needsUpdate=true;for(let i=0;i<rockData.length;i++){const d=rockData[i];if(!d.alive)continue;const visible=_frustum.intersectsSphere(new THREE.Sphere(new THREE.Vector3(d.x,terrainTopAt(d.x,d.z)+d.scale*.65,d.z),d.scale*1.8));if(visible!==d.visible){d.visible=visible;updateRockInstance(i);}}for(let i=0;i<treeData.length;i++){const d=treeData[i];if(!d.alive)continue;const visible=_frustum.intersectsSphere(new THREE.Sphere(new THREE.Vector3(d.x,terrainTopAt(d.x,d.z)+d.scale*.7,d.z),d.scale*1.5));if(visible!==d.visible){d.visible=visible;updateTreeInstance(i);}}}
 const handGeometry=new THREE.BoxGeometry(.16,.12,.34);const handMaterial=new THREE.MeshStandardMaterial({color:0xd6a078,roughness:1});const playerHand=new THREE.Mesh(handGeometry,handMaterial);playerHand.position.set(.32,-.3,-.48);camera.add(playerHand);scene.add(camera);
